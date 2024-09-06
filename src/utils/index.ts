@@ -1,26 +1,54 @@
 import { Types } from 'mongoose';
-import NodeRSA from 'node-rsa';
-import CryptoJS from 'crypto-js';
 
-// Retrieve the ConfigService instance for configuration management.
-export function toObjectId(id: any): Types.ObjectId {
-  return new Types.ObjectId(id);
+export function formatDate(date: Date): string {
+  let hours: any = date.getHours();
+  let minutes: any = date.getMinutes();
+
+  hours = hours < 10 ? '0' + hours : hours;
+  minutes = minutes < 10 ? '0' + minutes : minutes;
+
+  let day: any = date.getDate();
+  let month: any = date.getMonth() + 1;
+  const year = date.getFullYear();
+
+  day = day < 10 ? '0' + day : day;
+  month = month < 10 ? '0' + month : month;
+  return hours + ':' + minutes + ' - ' + day + '/' + month + '/' + year;
 }
+export function areObjectIdArraysDifferent(
+  array1: Types.ObjectId[],
+  array2: Types.ObjectId[],
+): boolean {
+  if (array1.length !== array2.length) {
+    return true;
+  }
 
-export function encryptObject(publicKey: string, body: object) {
-  const key = new NodeRSA();
-  key.importKey(publicKey, 'pkcs8-public-pem');
-  return key.encrypt(JSON.stringify(body), 'base64');
+  const set1 = new Set(array1.map((id) => id.toString()));
+  const set2 = new Set(array2.map((id) => id.toString()));
+
+  for (const id of set1) {
+    if (!set2.has(id)) {
+      return true;
+    }
+  }
+
+  for (const id of set2) {
+    if (!set1.has(id)) {
+      return true;
+    }
+  }
+
+  return false;
 }
+export async function getRemovedManagers(
+  bodyManager: Types.ObjectId[],
+  currentManager: Types.ObjectId[],
+) {
+  const bodyManagerIds = bodyManager.map((id) => id.toString());
+  const currentManagerIds = currentManager.map((id) => id.toString());
+  const removedManagers = currentManagerIds.filter(
+    (id) => !bodyManagerIds.includes(id),
+  );
 
-export function encryptKey(string: any, encrypt_key: any) {
-  // Mã hóa một chuỗi
-  const ciphertext = CryptoJS.AES.encrypt(string, encrypt_key).toString();
-  return ciphertext;
-}
-
-export function decryptKey(string: any, encrypt_key: any) {
-  const bytes = CryptoJS.AES.decrypt(string, encrypt_key);
-  const originalText = bytes.toString(CryptoJS.enc.Utf8);
-  return originalText;
+  return removedManagers.map((id) => new Types.ObjectId(id));
 }

@@ -1,13 +1,17 @@
 import { genSaltSync, hashSync } from 'bcryptjs';
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { UserDocument, Users } from 'src/modules/users/schemas/user.schema';
 import { CreateUserDto } from 'src/modules/users/dto/create-user.dto';
-import { IUser } from 'dist/modules/users/users.interface';
-import * as bcrypt from 'bcrypt';
+import { IUser } from 'src/modules/users/users.interface';
+import { UpdateUserDto } from 'src/modules/users/dto/update-user';
 import { BaseService } from 'src/base/base.service';
-import { toObjectId } from 'src/utils';
 @Injectable()
 export class UserService extends BaseService<UserDocument> {
   constructor(@InjectModel(Users.name) private userModel: Model<UserDocument>) {
@@ -29,7 +33,7 @@ export class UserService extends BaseService<UserDocument> {
   }
 
   async findOneByEmail(email: string) {
-    return await this.userModel.findOne({ email }).populate({
+    return this.userModel.findOne({ email }).populate({
       path: 'role',
       select: {
         name: 1,
@@ -38,32 +42,39 @@ export class UserService extends BaseService<UserDocument> {
   }
 
   async findAll(): Promise<Users[]> {
-    return await this.userModel.find().exec();
+    return this.userModel.find().exec();
   }
 
-  async findOne(id: string): Promise<Users | null> {
-    return await this.userModel.findById(new Types.ObjectId(id));
+  async getUserById(id: string): Promise<Users | null> {
+    return this.userModel.findById(new Types.ObjectId(id));
   }
 
-  async create(crearteUserDto: CreateUserDto, user: IUser) {
-    const { email, name, password, role } = crearteUserDto;
-    const existingUser = await this.findOneByEmail(email);
-    if (existingUser) {
-      throw new BadRequestException('email already exists');
-    }
-    const hashedPassword = await bcrypt.hash(password, 10);
-    return this.createData(
-      {
-        name,
-        email,
-        role: toObjectId(role),
-        password: hashedPassword,
+  async create(crearteUserDto: CreateUserDto) {
+    const createdUser = new this.userModel(crearteUserDto);
+    return createdUser.save();
+  }
+
+  async update(id: string, updateUserDto: UpdateUserDto, user: IUser) {
+    console.log('updateUserDto: ', updateUserDto);
+    return this.updateData({
+      id,
+      updateDto: {
+        ...updateUserDto,
+        updatedBy: user?._id,
       },
-      [
-        {
-          path: 'role',
-        },
-      ],
-    );
+    });
+  }
+
+  async remove(id: string) {
+    const foundUser = await this.userModel.findById(id);
+
+    if (foundUser?.email === 'admin@gmail.com') {
+      throw new BadRequestException('Not allowed to remove admin user');
+    }
+    await this.userModel.deleteOne({
+      _id: id,
+    });
+    console.log('Xoá thành công');
+    return foundUser;
   }
 }

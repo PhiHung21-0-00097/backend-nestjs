@@ -1,14 +1,14 @@
 export interface IUser {
   _id: string;
-  name: string;
+  username: string;
   email: string;
   role: {
     _id: string;
-    name: string;
+    username: string;
   };
   permissions?: {
     _id: string;
-    name: string;
+    username: string;
     apiPath: string;
     module: string;
   }[];

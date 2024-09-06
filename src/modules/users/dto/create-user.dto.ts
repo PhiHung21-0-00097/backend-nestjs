@@ -13,10 +13,10 @@ export class CreateUserDto {
   password: string;
 
   @IsNotEmpty()
-  name: string;
+  username: string;
 
   @IsNotEmpty()
-  @IsMongoId()
+  // @IsMongoId()
   role: Types.ObjectId;
 }
 export class RegisterUserDto {
@@ -31,5 +31,5 @@ export class RegisterUserDto {
   password: string;
 
   @IsNotEmpty()
-  name: string;
+  username: string;
 }

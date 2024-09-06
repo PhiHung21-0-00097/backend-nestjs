@@ -1,7 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 
 import { Model } from 'mongoose';
-import { toObjectId } from 'src/utils';
 
 @Injectable()
 export abstract class BaseService<T> {
@@ -103,7 +102,6 @@ export abstract class BaseService<T> {
   }): Promise<T> {
     try {
       const updatedEntity = this.model.findByIdAndUpdate(
-        toObjectId(id),
         {
           ...updateDto,
         },
