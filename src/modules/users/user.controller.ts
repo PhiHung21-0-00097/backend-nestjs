@@ -6,12 +6,15 @@ import {
   Param,
   Post,
   Put,
+  Req,
 } from '@nestjs/common';
 import { CreateUserDto } from 'src/modules/users/dto/create-user.dto';
 import { UserService } from 'src/modules/users/user.service';
 import { ResponseMessage } from 'src/auth/decorators/response_message.decorator';
 import { UpdateUserDto } from 'src/modules/users/dto/update-user';
-import { IUser } from 'src/modules/users/users.interface';
+import { GetClientIP } from 'src/decorators/client-ip.decorator';
+import { AuthUser } from 'src/decorators/auth-user.decorator';
+import { UserDocument } from 'src/modules/users/user.entity';
 
 @Controller('users')
 export class UserController {
@@ -19,8 +22,13 @@ export class UserController {
 
   @Post()
   @ResponseMessage('Create a new user')
-  create(@Body() createUserDto: CreateUserDto) {
-    return this.userServices.create(createUserDto);
+  createNewUser(
+    @Body() createUser: CreateUserDto,
+    @Req() request: Request,
+    @GetClientIP() userIp: string,
+    @AuthUser() user: UserDocument,
+  ) {
+    return this.userServices.create(createUser, request, userIp, user);
   }
 
   @Get()
@@ -37,12 +45,20 @@ export class UserController {
 
   @Put(':id')
   @ResponseMessage('Update a user by id')
-  update(
+  updateUserById(
     @Param('id') id: string,
     @Body() updateUser: UpdateUserDto,
-    user: IUser,
+    @Req() request: Request,
+    @GetClientIP() userIp: string,
+    @AuthUser() user: UserDocument,
   ) {
-    return this.userServices.update(id, updateUser, user);
+    return this.userServices.updateUserById(
+      id,
+      updateUser,
+      request,
+      userIp,
+      user,
+    );
   }
   @Delete(':id')
   @ResponseMessage('Delete a user by id')

@@ -10,6 +10,5 @@ export class CreateRoleDto {
 
   @IsNotEmpty()
   @IsMongoId({ each: true })
-  @IsArray()
   permissions: Types.ObjectId[];
 }
