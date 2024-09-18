@@ -6,6 +6,7 @@ import {
   IsArray,
   Validate,
 } from 'class-validator';
+import { Types } from 'mongoose';
 import { IsObjectId } from 'src/validators/isValidObjectId.validator';
 export class CreateUserDto {
   @IsNotEmpty({ message: 'User Name Is Not Empty' })
@@ -27,12 +28,12 @@ export class CreateUserDto {
   @IsNotEmpty({ message: 'Your Role Is Not Empty' })
   @IsString({ message: 'Please Select Your Role' })
   @IsObjectId({ message: 'Role Is Not Valid Value' })
-  role: string;
+  role: Types.ObjectId;
 
-  @IsArray({ message: "User's Teams Must Be An Array" })
-  @Validate(IsObjectId, {
-    each: true,
-    message: 'Each Team ID must be a valid ObjectId',
-  })
-  teams: string[];
+  // @IsArray({ message: "User's Teams Must Be An Array" })
+  // @Validate(IsObjectId, {
+  //   each: true,
+  //   message: 'Each Team ID must be a valid ObjectId',
+  // })
+  // teams: Types.ObjectId[] = [];
 }

@@ -1,10 +1,5 @@
 import { genSaltSync, hashSync } from 'bcryptjs';
-import {
-  BadRequestException,
-  HttpException,
-  HttpStatus,
-  Injectable,
-} from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { CreateUserDto } from 'src/modules/users/dto/create-user.dto';
@@ -15,11 +10,13 @@ import * as bcrypt from 'bcrypt';
 import { formatDate } from 'src/utils';
 import { StatusResponse } from 'src/common/enums/StatusResponse.enum';
 import { PermissionService } from 'src/modules/permission/permission.service';
+import { UpdatePasswordDto } from 'src/modules/users/dto/update-passowrd.dto';
+import { Request } from 'express';
+import { CreateUserDtoCopy } from 'src/modules/users/dto/create-user.dto-copy';
 @Injectable()
 export class UserService extends BaseService<UserDocument> {
   constructor(
     @InjectModel(User.name) private userModel: Model<UserDocument>,
-    // @InjectModel(Team.name) private teamModel: Model<TeamDocument>,
     private readonly permissionService: PermissionService,
   ) {
     super(userModel);
@@ -75,12 +72,52 @@ export class UserService extends BaseService<UserDocument> {
     });
   }
 
-  async findAll(): Promise<User[]> {
-    return this.userModel.find().exec();
+  async getAllUser() {
+    try {
+      const users = await this.userModel.find({ isDelete: false });
+      return {
+        status: StatusResponse.SUCCESS,
+        message: 'Get All User Success',
+        data: users,
+      };
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw new HttpException(
+        {
+          status: StatusResponse.FAIL,
+          err,
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
   }
 
-  async getUserById(id: string): Promise<User | null> {
-    return this.userModel.findById(new Types.ObjectId(id));
+  async getUserById(id: string) {
+    try {
+      const role = await this.userModel.findById(new Types.ObjectId(id));
+      if (!role)
+        throw new HttpException(
+          {
+            status: StatusResponse.FAIL,
+            message: 'Role By Id Is Not Exists',
+          },
+          HttpStatus.BAD_GATEWAY,
+        );
+      return {
+        status: StatusResponse.SUCCESS,
+        message: 'Get Role By ID Success',
+        data: role,
+      };
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw new HttpException(
+        {
+          status: StatusResponse.FAIL,
+          err,
+        },
+        HttpStatus.BAD_GATEWAY,
+      );
+    }
   }
 
   async create(
@@ -94,20 +131,6 @@ export class UserService extends BaseService<UserDocument> {
       const hashPassword = await bcrypt.hash(password, 10);
 
       const alreadyUsername = await this.checkUsername(createUserDto?.username);
-      const teams = [];
-      let logTeam = `(Trống)`;
-      if (createUserDto.hasOwnProperty('teams')) {
-        let arrTeamName = [];
-        for (const team of createUserDto.teams) {
-          // const checkTeam = await this.teamModel.findById(
-          //   new Types.ObjectId(team),
-          // );
-          // if (!checkTeam) continue;
-          // arrTeamName.push(`${checkTeam.name}`);
-          teams.push(new Types.ObjectId(team));
-        }
-        if (!!arrTeamName.length) logTeam = arrTeamName.join(', ');
-      }
       if (alreadyUsername) {
         throw new HttpException(
           {
@@ -117,9 +140,7 @@ export class UserService extends BaseService<UserDocument> {
           HttpStatus.BAD_REQUEST,
         );
       }
-
       const alreadyEmail = await this.checkEmail(createUserDto?.email);
-
       if (alreadyEmail) {
         throw new HttpException(
           {
@@ -133,21 +154,33 @@ export class UserService extends BaseService<UserDocument> {
       const newUser = await this.userModel.create({
         ...createUserDto,
         password: hashPassword,
-        teams,
-        role: new Types.ObjectId(createUserDto?.role),
       });
+      const user = await this.userModel.findById(newUser?._id);
 
-      const user = await this.userModel.findById(newUser?._id).populate([
-        { path: 'role', select: 'name' },
-        { path: 'teams', select: '_id name' },
-      ]);
-      let stringLog = `${_user?.username || 'Khách vãng lai'} vừa tạo mới 1 người dùng có các thông tin :\nTên đăng nhập: ${user.username}\nTên: ${user.username}\nEmail: ${user?.email || 'Trống'}\nVai trò: ${user?.role?.username || 'Trống'}\nTeam: ${logTeam}.\nVào lúc: <b>${formatDate(
-        new Date(),
-      )}</b>\nIP người thực hiện: ${userIp}.`;
-      console.log('logTeam: ', logTeam);
-      request['new-data'] =
-        `Tên đăng nhập: ${user.username}\nTên: ${user.username}\nEmail: ${user?.email || 'Trống'}\nVai trò: ${user?.role?.username || 'Trống'}\nTeam: ${logTeam}`;
-      request['message-log'] = stringLog;
+      return {
+        status: StatusResponse.SUCCESS,
+        message: 'Create New User successfully',
+        user,
+      };
+    } catch (error) {
+      if (error instanceof HttpException) throw error;
+      throw new HttpException(
+        {
+          status: HttpStatus.BAD_GATEWAY,
+          error,
+        },
+        HttpStatus.BAD_GATEWAY,
+      );
+    }
+  }
+
+  async loginCreateUser(createUserDto: CreateUserDtoCopy) {
+    try {
+      const newUser = await this.userModel.create({
+        ...createUserDto,
+      });
+      const user = await this.userModel.findById(newUser?._id);
+
       return {
         status: StatusResponse.SUCCESS,
         message: 'Create New User successfully',
@@ -171,18 +204,189 @@ export class UserService extends BaseService<UserDocument> {
     request: Request,
     userIp: string,
     _user: UserDocument,
-  ) {}
+  ) {
+    try {
+      const user = await this.userModel.findById(new Types.ObjectId(id));
+      if (!user)
+        throw new HttpException(
+          {
+            status: StatusResponse.NOTFOUND,
+            message: 'User Id Is Not Found!',
+          },
+          HttpStatus.BAD_GATEWAY,
+        );
 
-  async remove(id: string) {
-    const foundUser = await this.userModel.findById(id);
+      const alreadyUsername = await this.checkUsername(updateUser?.username);
+      if (updateUser?.username === user?.username) {
+        throw new HttpException(
+          {
+            status: StatusResponse.EXISTS_USERNAME,
+            message: 'Already Exist Username!',
+          },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
 
-    if (foundUser?.email === 'admin@gmail.com') {
-      throw new BadRequestException('Not allowed to remove admin user');
+      const alreadyEmail = await this.checkEmail(updateUser?.email);
+
+      if (updateUser?.email === user?.email) {
+        throw new HttpException(
+          {
+            status: StatusResponse.EXISTS_EMAIL,
+            message: 'Already Exist Email!',
+          },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      const newData = await this.userModel.findByIdAndUpdate(
+        user?._id,
+        {
+          ...updateUser,
+        },
+        {
+          new: true,
+        },
+      );
+      return {
+        status: StatusResponse.SUCCESS,
+        message: 'Update User Success',
+        data: newData,
+      };
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw new HttpException(
+        {
+          status: StatusResponse.FAIL,
+          err,
+        },
+        HttpStatus.BAD_GATEWAY,
+      );
     }
-    await this.userModel.deleteOne({
-      _id: id,
-    });
-    console.log('Xoá thành công');
-    return foundUser;
+  }
+
+  async deleteChangeDelete(id: string) {
+    try {
+      const user = await this.userModel.findById(new Types.ObjectId(id));
+      if (!user)
+        throw new HttpException(
+          {
+            status: StatusResponse.NOTFOUND,
+            message: 'User Id Is Not Found!',
+          },
+          HttpStatus.BAD_REQUEST,
+        );
+      console.log('user: ', user);
+      await this.userModel.findByIdAndUpdate(
+        user?._id,
+        {
+          isDelete: true,
+        },
+        { new: true },
+      );
+      return {
+        status: StatusResponse.SUCCESS,
+        message: 'Delete User Success',
+      };
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw new HttpException(
+        {
+          status: StatusResponse.FAIL,
+          err,
+        },
+        HttpStatus.BAD_GATEWAY,
+      );
+    }
+  }
+
+  async deleteById(id: string) {
+    try {
+      const user = await this.userModel.findById(new Types.ObjectId(id));
+      if (!user)
+        throw new HttpException(
+          {
+            status: StatusResponse.NOTFOUND,
+            message: 'User Id Is Not Found!',
+          },
+          HttpStatus.BAD_REQUEST,
+        );
+      await this.userModel.findByIdAndDelete(new Types.ObjectId(id));
+      return {
+        status: StatusResponse.SUCCESS,
+        message: 'Delete User Success',
+      };
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw new HttpException(
+        {
+          status: StatusResponse.FAIL,
+          err,
+        },
+        HttpStatus.BAD_GATEWAY,
+      );
+    }
+  }
+
+  async updatePassword(id: string, updatePassword: UpdatePasswordDto) {
+    try {
+      const user = await this.userModel.findById(new Types.ObjectId(id));
+      console.log('user: ', user);
+
+      const { currentPassword, password } = updatePassword;
+
+      const hashPassword = await bcrypt.hash(password, 10);
+
+      console.log('user?.password: ', user?.password);
+
+      const checkPassword = await this.checkPassword(
+        currentPassword,
+        user?.password,
+      );
+      if (!checkPassword) {
+        throw new HttpException(
+          {
+            status: StatusResponse.USERNAME_OR_PASSWORD_IS_NOT_CORRECT,
+            message: 'Current Password Is Not Correct',
+          },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      if (currentPassword === password) {
+        throw new HttpException(
+          {
+            status: StatusResponse.PASSWORD_INCORRECT,
+            message: 'New Password Cannot Be The Same As Current Password',
+          },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      const udProfile = await this.userModel.findByIdAndUpdate(
+        user?._id,
+        {
+          password: hashPassword,
+        },
+        {
+          new: true,
+        },
+      );
+
+      return {
+        status: StatusResponse.SUCCESS,
+        message: 'Update Password Success!',
+        data: udProfile,
+      };
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw new HttpException(
+        {
+          status: StatusResponse.FAIL,
+          err,
+        },
+        HttpStatus.BAD_GATEWAY,
+      );
+    }
   }
 }

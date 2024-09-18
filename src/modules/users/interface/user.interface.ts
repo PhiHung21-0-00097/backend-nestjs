@@ -1,5 +1,7 @@
 export interface userInterface {
-  readonly usernames?: string;
   readonly username?: string;
+  readonly name?: string;
+  readonly email?: string;
+  readonly team?: any;
   readonly role?: any;
 }

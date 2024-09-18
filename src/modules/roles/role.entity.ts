@@ -6,13 +6,7 @@ export type RoleDocument = HydratedDocument<Role>;
 @Schema({ timestamps: true })
 export class Role {
   @Prop()
-  username: string;
-
-  @Prop()
-  desc: string;
-
-  @Prop()
-  permissions: Types.ObjectId[];
+  name?: string;
 }
 
 export const RoleSchema = SchemaFactory.createForClass(Role);

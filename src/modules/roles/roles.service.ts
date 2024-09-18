@@ -4,6 +4,7 @@ import {
   HttpStatus,
   Injectable,
   Logger,
+  OnModuleInit,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
@@ -16,7 +17,7 @@ import { UserDocument } from 'src/modules/users/user.entity';
 import { formatDate } from 'src/utils';
 import { Permission } from 'src/modules/permission/permission.entity';
 @Injectable()
-export class RoleService {
+export class RoleService implements OnModuleInit {
   constructor(
     @InjectModel('Role')
     private rolesModel: Model<Role>,
@@ -62,19 +63,22 @@ export class RoleService {
     user: UserDocument,
   ) {
     try {
-      const { username } = createRoleDto;
-      const checkRole = await this.rolesModel.findOne({ username });
+      const { name } = createRoleDto;
+      console.log('name: ', name);
+
+      const checkRole = await this.rolesModel.findOne({ name });
       if (checkRole)
         throw new HttpException(
           {
             status: StatusResponse.FAIL,
-            message: 'Already Exist Role',
+            message: 'Already Exist Username',
           },
           HttpStatus.BAD_GATEWAY,
         );
+
       const role = await this.rolesModel.create(createRoleDto);
-      const newData = `Tên role: ${username}`;
-      let stringLog = `${user?.usernames} vừa tạo mới role với các thông tin:\n${newData}\nVào lúc: <b>${formatDate(
+      const newData = `Tên role: ${name}`;
+      let stringLog = `${user?.username} vừa tạo mới role với các thông tin:\n${newData}\nVào lúc: <b>${formatDate(
         new Date(),
       )}</b>\nIP người thực hiện: ${userIp}.`;
       request['new-data'] = newData;
@@ -121,9 +125,9 @@ export class RoleService {
           },
           HttpStatus.BAD_REQUEST,
         );
-      const oldData = `Tên role: ${role.username}\n`;
+      const oldData = `Tên role: ${role.name}\n`;
       const checkName = await this.rolesModel.findOne({
-        username: _role.username,
+        name: _role.name,
       });
       if (checkName)
         throw new HttpException(
@@ -133,8 +137,8 @@ export class RoleService {
           },
           HttpStatus.BAD_REQUEST,
         );
-      role.username = _role.username;
-      const newData = `Tên role: ${role.username}\n`;
+      role.name = _role.name;
+      const newData = `Tên role: ${role.name}\n`;
       let stringLog = `${user?.username} vừa cập nhật role với các thông tin:\n${newData}\nVào lúc: <b>${formatDate(
         new Date(),
       )}</b>\nIP người thực hiện: ${userIp}.`;
@@ -166,6 +170,7 @@ export class RoleService {
     user: UserDocument,
   ) {
     try {
+      console.log('id: ', id);
       if (id === adminRole)
         throw new ForbiddenException({
           message: "You Don't Have Permission To Delete Admin Role",
@@ -186,10 +191,10 @@ export class RoleService {
       await this.permissionModel.deleteMany({
         role: new Types.ObjectId(id),
       });
-      let stringLog = `${user?.username} vừa xóa role có tên ${role.username}\nVào lúc: <b>${formatDate(
+      let stringLog = `${user?.username} vừa xóa role có tên ${role.name}\nVào lúc: <b>${formatDate(
         new Date(),
       )}</b>\nIP người thực hiện: ${userIp}.`;
-      const oldData = `Tên role: ${role.username}\n`;
+      const oldData = `Tên role: ${role.name}\n`;
       request['old-data'] = oldData;
       request['message-log'] = stringLog;
       return {

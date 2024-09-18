@@ -7,7 +7,7 @@ export class CreatePermissionDto {
   @IsNotEmpty({ message: 'Role Is Not Empty ' })
   @IsString({ message: 'Role Must Be A String' })
   @IsObjectId({ message: 'Role Value Not Valid' })
-  role: string;
+  role?: string;
   @IsNotEmpty({ message: 'Action Is Not Empty' })
   @IsEnum(ActionEnum, {
     each: true,

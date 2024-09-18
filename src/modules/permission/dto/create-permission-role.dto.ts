@@ -55,7 +55,7 @@ export function IsEnumValid(validationOptions?: ValidationOptions) {
 export class CreatePermissionRoleDto {
   @IsString()
   @IsNotEmpty()
-  role: string;
+  role?: string;
 
   @ValidateNested()
   @IsEnumValid()

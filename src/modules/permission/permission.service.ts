@@ -94,7 +94,7 @@ export class PermissionService {
           HttpStatus.BAD_REQUEST,
         );
       const checkRole = await this.roleModel.findOne({
-        username: permission.role,
+        name: permission.role,
       });
       if (checkRole)
         throw new HttpException(
@@ -105,8 +105,8 @@ export class PermissionService {
           HttpStatus.BAD_REQUEST,
         );
 
-      const role = await this.roleModel.create({ username: permission.role });
-      let newData = `Tên role: ${role.username}\n`;
+      const role = await this.roleModel.create({ name: permission.role });
+      let newData = `Tên role: ${role.name}\n`;
       if (!!Object.entries(permission.permission).length)
         newData += `Với các quyền hạn cụ thể sau:\n`;
       const permissions = [];
@@ -190,10 +190,10 @@ export class PermissionService {
         subject,
       });
       let newData = `${subjectMapping[subject]} : ${!!action?.length ? [...action].map((val) => actionMapping[val])?.join(', ') : '(Trống)'}\n`;
-      let stringLog = `${user?.username} vừa tạo mới quyền hạn cho role ${_role.username} với các thông tin sau :\n${newData}\nVào lúc: <b>${formatDate(
+      let stringLog = `${user?.username} vừa tạo mới quyền hạn cho role ${_role.name} với các thông tin sau :\n${newData}\nVào lúc: <b>${formatDate(
         new Date(),
       )}</b>\nIP người thực hiện: ${userIp}.`;
-      request['new-data'] = `tên role: ${_role.username},\n${newData}`;
+      request['new-data'] = `tên role: ${_role.name},\n${newData}`;
       request['message-log'] = stringLog;
       return {
         status: StatusResponse.SUCCESS,
@@ -239,10 +239,10 @@ export class PermissionService {
           HttpStatus.FORBIDDEN,
         );
       await permission.deleteOne();
-      let stringLog = `${user?.username} vừa xóa quyền hạn ${subjectMapping[permission.subject]} của role ${permission.role.username}\nVào lúc: <b>${formatDate(
+      let stringLog = `${user?.username} vừa xóa quyền hạn ${subjectMapping[permission.subject]} của role ${permission.role.name}\nVào lúc: <b>${formatDate(
         new Date(),
       )}</b>\nIP người thực hiện: ${userIp}.`;
-      const oldData = `Tên role: ${permission.role.username},\n${subjectMapping[permission.subject]} : ${!!permission.action?.length ? [...permission.action].map((val) => actionMapping[val])?.join(', ') : '(Trống)'}\n`;
+      const oldData = `Tên role: ${permission.role.name},\n${subjectMapping[permission.subject]} : ${!!permission.action?.length ? [...permission.action].map((val) => actionMapping[val])?.join(', ') : '(Trống)'}\n`;
       request['old-data'] = oldData;
       request['message-log'] = stringLog;
       return {
@@ -268,7 +268,7 @@ export class PermissionService {
       const _permission = await this.permissionModel
         .findById(new Types.ObjectId(id))
         .populate('role');
-      const oldData = `Tên role: ${_permission.role.username},\n${subjectMapping[_permission.subject]} : ${_permission.action?.length ? [..._permission.action].map((val) => actionMapping[val])?.join(', ') : '(Trống)'}\n`;
+      const oldData = `Tên role: ${_permission.role.name},\n${subjectMapping[_permission.subject]} : ${_permission.action?.length ? [..._permission.action].map((val) => actionMapping[val])?.join(', ') : '(Trống)'}\n`;
       if (!permission)
         throw new HttpException(
           {
@@ -289,7 +289,7 @@ export class PermissionService {
       _permission.action = action;
       _permission.subject = subject;
       _permission.save();
-      const newData = `Tên role: ${_permission.role.username},\n${subjectMapping[_permission.subject]} : ${!!_permission.action?.length ? [..._permission.action].map((val) => actionMapping[val])?.join(', ') : '(Trống)'}\n`;
+      const newData = `Tên role: ${_permission.role.name},\n${subjectMapping[_permission.subject]} : ${!!_permission.action?.length ? [..._permission.action].map((val) => actionMapping[val])?.join(', ') : '(Trống)'}\n`;
       let stringLog = `${user?.username} vừa cập nhật quyền hạn\nVào lúc: <b>${formatDate(
         new Date(),
       )}</b>\nIP người thực hiện: ${userIp}.`;
@@ -383,9 +383,9 @@ export class PermissionService {
         );
       const checkRoleName = await this.roleModel.findOne({
         _id: { $ne: role._id },
-        username: permission.role,
+        name: permission.role,
       });
-      let oldData = `Tên role: ${role.username}\n`;
+      let oldData = `Tên role: ${role.name}\n`;
 
       if (checkRoleName)
         throw new HttpException(
@@ -395,7 +395,7 @@ export class PermissionService {
           },
           HttpStatus.BAD_REQUEST,
         );
-      role.username = permission.role;
+      role.name = permission.role;
       const permissions = [];
       const oldPermissions = await this.permissionModel.find({
         role: role._id,
@@ -405,7 +405,7 @@ export class PermissionService {
 
       for (const pers of oldPermissions)
         oldData += `${subjectMapping[pers.subject]} : ${!!pers.action?.length ? [...pers.action].map((val) => actionMapping[val])?.join(', ') : '(Trống)'}\n`;
-      let newData = `Tên role: ${role.username}\n`;
+      let newData = `Tên role: ${role.name}\n`;
       if (!!Object.entries(permission.permission).length)
         newData += `Với các quyền hạn cụ thể sau:\n`;
       else newData += `Chưa khởi tạo quyền hạn nào`;

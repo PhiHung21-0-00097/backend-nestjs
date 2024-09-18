@@ -1,6 +1,6 @@
 import { IsOptional } from 'class-validator';
 
-export class LoginUserDto {
+export class CreateLogin {
   @IsOptional()
   username: string;
   @IsOptional()

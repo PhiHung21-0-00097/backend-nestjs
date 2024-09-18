@@ -10,17 +10,25 @@ import {
 } from '@nestjs/common';
 import { CreateUserDto } from 'src/modules/users/dto/create-user.dto';
 import { UserService } from 'src/modules/users/user.service';
-import { ResponseMessage } from 'src/auth/decorators/response_message.decorator';
 import { UpdateUserDto } from 'src/modules/users/dto/update-user';
 import { GetClientIP } from 'src/decorators/client-ip.decorator';
 import { AuthUser } from 'src/decorators/auth-user.decorator';
 import { UserDocument } from 'src/modules/users/user.entity';
+import { Authentication } from 'src/decorators/authentication.decorator';
+import { Authorization } from 'src/decorators/authorization.decorator';
+import { SubjectEnum } from 'src/common/enums/SubjectRoles.enum';
+import { ActionEnum } from 'src/common/enums/ActionsRole.enum';
+import { UpdatePasswordDto } from 'src/modules/users/dto/update-passowrd.dto';
+import { ResponseMessage } from 'src/decorators/response_message.decorator';
+import { Request } from 'express';
+import { CreateUserDtoCopy } from 'src/modules/users/dto/create-user.dto-copy';
 
 @Controller('users')
 export class UserController {
   constructor(private readonly userServices: UserService) {}
 
   @Post()
+  // @Authorization(SubjectEnum.USER, ActionEnum.CREATE)
   @ResponseMessage('Create a new user')
   createNewUser(
     @Body() createUser: CreateUserDto,
@@ -31,16 +39,32 @@ export class UserController {
     return this.userServices.create(createUser, request, userIp, user);
   }
 
+  @Post('/login')
+  // @Authorization(SubjectEnum.USER, ActionEnum.CREATE)
+  loginCreateUser(@Body() createUser: CreateUserDtoCopy) {
+    return this.userServices.loginCreateUser(createUser);
+  }
+
   @Get()
-  finAll() {
-    return this.userServices.findAll();
+  @ResponseMessage('Get All a user by id')
+  getAllUser() {
+    return this.userServices.getAllUser();
   }
 
   @Get(':id')
   @ResponseMessage('Fetch a user by id')
   getUserById(@Param('id') id: string) {
-    console.log(id);
     return this.userServices.getUserById(id);
+  }
+
+  @Put('password/:id')
+  @ResponseMessage('Update Password a user by id')
+  updatePassword(
+    @Param('id') id: string,
+    @Body()
+    udPassowrd: UpdatePasswordDto,
+  ) {
+    return this.userServices.updatePassword(id, udPassowrd);
   }
 
   @Put(':id')
@@ -60,11 +84,13 @@ export class UserController {
       user,
     );
   }
+
   @Delete(':id')
   @ResponseMessage('Delete a user by id')
-  remove(@Param('id') id: string) {
-    return this.userServices.remove(id);
+  deleteById(@Param('id') id: string) {
+    return this.userServices.deleteById(id);
   }
+
   // GET-ID
   // @Get('pipe/:id')
   // getUserByIdPipe(@Param('id', ParseIntPipe) id: number) {

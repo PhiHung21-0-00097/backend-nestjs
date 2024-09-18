@@ -3,12 +3,5 @@ import { Types } from 'mongoose';
 
 export class CreateRoleDto {
   @IsNotEmpty()
-  username: string;
-
-  @IsNotEmpty()
-  desc: string;
-
-  @IsNotEmpty()
-  @IsMongoId({ each: true })
-  permissions: Types.ObjectId[];
+  name: string;
 }
