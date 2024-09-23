@@ -6,6 +6,7 @@ import {
   Param,
   Post,
   Put,
+  Query,
   Req,
 } from '@nestjs/common';
 import { CreateUserDto } from 'src/modules/users/dto/create-user.dto';
@@ -21,7 +22,9 @@ import { ActionEnum } from 'src/common/enums/ActionsRole.enum';
 import { UpdatePasswordDto } from 'src/modules/users/dto/update-passowrd.dto';
 import { ResponseMessage } from 'src/decorators/response_message.decorator';
 import { Request } from 'express';
-import { CreateUserDtoCopy } from 'src/modules/users/dto/create-user.dto-copy';
+import { Logging } from 'src/decorators/logging.decorator';
+import { ActionLogEnum } from 'src/common/enums/ActionLog.enum';
+import { GetPagination } from 'src/interfaces/get-paging.interface';
 
 @Controller('users')
 export class UserController {
@@ -39,16 +42,19 @@ export class UserController {
     return this.userServices.create(createUser, request, userIp, user);
   }
 
-  @Post('/login')
-  // @Authorization(SubjectEnum.USER, ActionEnum.CREATE)
-  loginCreateUser(@Body() createUser: CreateUserDtoCopy) {
-    return this.userServices.loginCreateUser(createUser);
-  }
-
   @Get()
   @ResponseMessage('Get All a user by id')
   getAllUser() {
     return this.userServices.getAllUser();
+  }
+
+  // @Authorization(SubjectEnum.USER, ActionEnum.READ)
+  @Get('pagination')
+  getPaginationUser(
+    @Query() query: GetPagination,
+    @AuthUser() user: UserDocument,
+  ) {
+    return this.userServices.getPaginationUser(query, user);
   }
 
   @Get(':id')
@@ -58,13 +64,18 @@ export class UserController {
   }
 
   @Put('password/:id')
-  @ResponseMessage('Update Password a user by id')
+  @Logging(
+    'Người dùng đổi mật khẩu',
+    ActionLogEnum.CHANGE_PASSWORD,
+    SubjectEnum.USER,
+  )
   updatePassword(
     @Param('id') id: string,
     @Body()
     udPassowrd: UpdatePasswordDto,
+    @AuthUser() user: UserDocument,
   ) {
-    return this.userServices.updatePassword(id, udPassowrd);
+    return this.userServices.updatePassword(id, udPassowrd, user);
   }
 
   @Put(':id')

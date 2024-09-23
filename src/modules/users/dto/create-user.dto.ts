@@ -25,15 +25,15 @@ export class CreateUserDto {
   @IsEmail()
   email: string;
 
-  @IsNotEmpty({ message: 'Your Role Is Not Empty' })
+  @IsOptional()
   @IsString({ message: 'Please Select Your Role' })
   @IsObjectId({ message: 'Role Is Not Valid Value' })
   role: Types.ObjectId;
 
-  // @IsArray({ message: "User's Teams Must Be An Array" })
-  // @Validate(IsObjectId, {
-  //   each: true,
-  //   message: 'Each Team ID must be a valid ObjectId',
-  // })
-  // teams: Types.ObjectId[] = [];
+  @IsArray({ message: "User's Teams Must Be An Array" })
+  @Validate(IsObjectId, {
+    each: true,
+    message: 'Each Team ID must be a valid ObjectId',
+  })
+  teams: Types.ObjectId[] = [];
 }

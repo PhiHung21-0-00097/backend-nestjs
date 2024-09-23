@@ -18,7 +18,7 @@ export class User {
   @Prop({ type: String })
   email: string;
 
-  @Prop({ type: Types.ObjectId, ref: Role.name, required: true })
+  @Prop({ type: Types.ObjectId, ref: Role.name, required: true ,default:new Types.ObjectId("dj")})
   role?: RoleDocument;
 
   @Prop({ type: Boolean, default: false })

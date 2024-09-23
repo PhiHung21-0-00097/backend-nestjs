@@ -8,6 +8,7 @@ import { RoleModule } from 'src/modules/roles/roles.module';
 import { JwtModule } from '@nestjs/jwt';
 import { AuthModule } from 'src/modules/auth/auth.module';
 import { TestModule } from 'src/modules/test/test.module';
+import { TeamModule } from 'src/team/team.module';
 @Module({
   imports: [
     JwtModule.register({
@@ -17,8 +18,9 @@ import { TestModule } from 'src/modules/test/test.module';
     }),
     UserModule,
     TestModule,
-    // RoleModule,
-    // AuthModule,
+    RoleModule,
+    AuthModule,
+    TeamModule,
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({

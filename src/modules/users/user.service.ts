@@ -12,11 +12,13 @@ import { StatusResponse } from 'src/common/enums/StatusResponse.enum';
 import { PermissionService } from 'src/modules/permission/permission.service';
 import { UpdatePasswordDto } from 'src/modules/users/dto/update-passowrd.dto';
 import { Request } from 'express';
-import { CreateUserDtoCopy } from 'src/modules/users/dto/create-user.dto-copy';
+import { GetPagination } from 'src/interfaces/get-paging.interface';
+import { Team, TeamDocument } from 'src/team/team.entity';
 @Injectable()
 export class UserService extends BaseService<UserDocument> {
   constructor(
     @InjectModel(User.name) private userModel: Model<UserDocument>,
+    @InjectModel(Team.name) private teamModel: Model<TeamDocument>,
     private readonly permissionService: PermissionService,
   ) {
     super(userModel);
@@ -54,7 +56,6 @@ export class UserService extends BaseService<UserDocument> {
     const isCorrectPassword = await bcrypt.compare(password, hashPassword);
     return isCorrectPassword;
   }
-
   async findByUsername(username: string) {
     const user = await this.userModel.findOne({
       username,
@@ -131,6 +132,20 @@ export class UserService extends BaseService<UserDocument> {
       const hashPassword = await bcrypt.hash(password, 10);
 
       const alreadyUsername = await this.checkUsername(createUserDto?.username);
+      const teams = [];
+      let logTeam = `(Trống)`;
+      if (createUserDto.hasOwnProperty('teams')) {
+        const arrTeamName = [];
+        for (const team of createUserDto.teams) {
+          const checkTeam = await this.teamModel.findById(
+            new Types.ObjectId(team),
+          );
+          if (!checkTeam) continue;
+          arrTeamName.push(`${checkTeam.name}`);
+          teams.push(new Types.ObjectId(team));
+        }
+        if (!!arrTeamName.length) logTeam = arrTeamName.join(', ');
+      }
       if (alreadyUsername) {
         throw new HttpException(
           {
@@ -154,32 +169,13 @@ export class UserService extends BaseService<UserDocument> {
       const newUser = await this.userModel.create({
         ...createUserDto,
         password: hashPassword,
+        teams,
+        role: new Types.ObjectId(createUserDto?.role),
       });
-      const user = await this.userModel.findById(newUser?._id);
-
-      return {
-        status: StatusResponse.SUCCESS,
-        message: 'Create New User successfully',
-        user,
-      };
-    } catch (error) {
-      if (error instanceof HttpException) throw error;
-      throw new HttpException(
-        {
-          status: HttpStatus.BAD_GATEWAY,
-          error,
-        },
-        HttpStatus.BAD_GATEWAY,
-      );
-    }
-  }
-
-  async loginCreateUser(createUserDto: CreateUserDtoCopy) {
-    try {
-      const newUser = await this.userModel.create({
-        ...createUserDto,
-      });
-      const user = await this.userModel.findById(newUser?._id);
+      const user = await this.userModel.findById(newUser?._id).populate([
+        { path: 'role', select: 'name' },
+        { path: 'teams', select: '_id name' },
+      ]);
 
       return {
         status: StatusResponse.SUCCESS,
@@ -328,21 +324,31 @@ export class UserService extends BaseService<UserDocument> {
     }
   }
 
-  async updatePassword(id: string, updatePassword: UpdatePasswordDto) {
+  async updatePassword(
+    id: string,
+    updatePassword: UpdatePasswordDto,
+    user: UserDocument,
+  ) {
     try {
       const user = await this.userModel.findById(new Types.ObjectId(id));
-      console.log('user: ', user);
 
       const { currentPassword, password } = updatePassword;
 
+      console.log('Password cũ xác thực: ', currentPassword);
+
+      console.log('Password mới: ', password);
+
       const hashPassword = await bcrypt.hash(password, 10);
 
-      console.log('user?.password: ', user?.password);
+      console.log('Password mã hoá: ', hashPassword);
+
+      console.log('Pass cũ ở dạng mã hoá: ', user?.password);
 
       const checkPassword = await this.checkPassword(
         currentPassword,
         user?.password,
       );
+      // check password ở database
       if (!checkPassword) {
         throw new HttpException(
           {
@@ -353,6 +359,7 @@ export class UserService extends BaseService<UserDocument> {
         );
       }
 
+      // check password cũ ở dạng thường và dạng mã hoá
       if (currentPassword === password) {
         throw new HttpException(
           {
@@ -378,6 +385,29 @@ export class UserService extends BaseService<UserDocument> {
         message: 'Update Password Success!',
         data: udProfile,
       };
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw new HttpException(
+        {
+          status: StatusResponse.FAIL,
+          err,
+        },
+        HttpStatus.BAD_GATEWAY,
+      );
+    }
+  }
+
+  async getPaginationUser(query: GetPagination, user: UserDocument) {
+    try {
+      const { pageSize, pageIndex, ...rest } = query;
+
+      const search = { ...rest };
+
+      const filter: any = {};
+
+      const limit = pageSize ? pageSize : null;
+
+      const skip = pageIndex ? pageSize + (pageIndex - 1) : null;
     } catch (err) {
       if (err instanceof HttpException) throw err;
       throw new HttpException(
