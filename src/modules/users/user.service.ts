@@ -14,6 +14,7 @@ import { UpdatePasswordDto } from 'src/modules/users/dto/update-passowrd.dto';
 import { Request } from 'express';
 import { GetPagination } from 'src/interfaces/get-paging.interface';
 import { Team, TeamDocument } from 'src/team/team.entity';
+import { adminRole } from 'src/constants';
 @Injectable()
 export class UserService extends BaseService<UserDocument> {
   constructor(
@@ -26,6 +27,33 @@ export class UserService extends BaseService<UserDocument> {
 
   getUserData() {
     throw new Error('Method not implemented.');
+  }
+
+  async findOneById(id: string) {
+    try {
+      const user = await this.userModel.findById(new Types.ObjectId(id));
+      return user;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  async checkTeamAndAddTeam(teamId: Types.ObjectId, userId: Types.ObjectId) {
+    try {
+      await this.userModel
+        .updateOne(
+          { _id: userId },
+          {
+            $addToSet: {
+              teams: teamId,
+            },
+          },
+        )
+        .exec();
+      return null;
+    } catch (error) {
+      return null;
+    }
   }
 
   getHashPassword = (password: string) => {
@@ -74,23 +102,16 @@ export class UserService extends BaseService<UserDocument> {
   }
 
   async getAllUser() {
-    try {
-      const users = await this.userModel.find({ isDelete: false });
-      return {
-        status: StatusResponse.SUCCESS,
-        message: 'Get All User Success',
-        data: users,
-      };
-    } catch (err) {
-      if (err instanceof HttpException) throw err;
-      throw new HttpException(
-        {
-          status: StatusResponse.FAIL,
-          err,
-        },
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
+    const users = await this.userModel.find({ isDelete: false }).populate([
+      { path: 'role', select: 'name' },
+      { path: 'team', select: 'name' },
+    ]);
+
+    return {
+      status: StatusResponse.SUCCESS,
+      message: 'Get All User Success',
+      data: users,
+    };
   }
 
   async getUserById(id: string) {
@@ -132,20 +153,7 @@ export class UserService extends BaseService<UserDocument> {
       const hashPassword = await bcrypt.hash(password, 10);
 
       const alreadyUsername = await this.checkUsername(createUserDto?.username);
-      const teams = [];
-      let logTeam = `(Trống)`;
-      if (createUserDto.hasOwnProperty('teams')) {
-        const arrTeamName = [];
-        for (const team of createUserDto.teams) {
-          const checkTeam = await this.teamModel.findById(
-            new Types.ObjectId(team),
-          );
-          if (!checkTeam) continue;
-          arrTeamName.push(`${checkTeam.name}`);
-          teams.push(new Types.ObjectId(team));
-        }
-        if (!!arrTeamName.length) logTeam = arrTeamName.join(', ');
-      }
+
       if (alreadyUsername) {
         throw new HttpException(
           {
@@ -169,12 +177,12 @@ export class UserService extends BaseService<UserDocument> {
       const newUser = await this.userModel.create({
         ...createUserDto,
         password: hashPassword,
-        teams,
+        team: new Types.ObjectId(createUserDto?.team),
         role: new Types.ObjectId(createUserDto?.role),
       });
       const user = await this.userModel.findById(newUser?._id).populate([
         { path: 'role', select: 'name' },
-        { path: 'teams', select: '_id name' },
+        { path: 'team', select: 'name' },
       ]);
 
       return {
@@ -398,25 +406,51 @@ export class UserService extends BaseService<UserDocument> {
   }
 
   async getPaginationUser(query: GetPagination, user: UserDocument) {
-    try {
-      const { pageSize, pageIndex, ...rest } = query;
+    const { pageIndex, pageSize, ...rest } = query;
 
-      const search = { ...rest };
+    const search = { ...rest };
 
-      const filter: any = {};
+    const filter: any = {};
 
-      const limit = pageSize ? pageSize : null;
+    // user.role._id.toString() !== adminRole &&
+    //   (filter['teams'] = {
+    //     $in: [...user.teams.map((t) => new Types.ObjectId(t))],
+    //   });
+    const limit = pageSize ? pageSize : null;
+    const skip = pageIndex ? pageSize * (pageIndex - 1) : null;
 
-      const skip = pageIndex ? pageSize + (pageIndex - 1) : null;
-    } catch (err) {
-      if (err instanceof HttpException) throw err;
-      throw new HttpException(
+    if (Object.keys(search)?.length) {
+      filter['$or'] = [
         {
-          status: StatusResponse.FAIL,
-          err,
+          name: new RegExp(search?.search.toString(), 'i'),
         },
-        HttpStatus.BAD_GATEWAY,
-      );
+        {
+          username: new RegExp(search?.search.toString(), 'i'),
+        },
+      ];
     }
+    const [total, users] = await Promise.all([
+      this.userModel.countDocuments({ ...filter, isDelete: false }),
+      this.userModel
+        .find({
+          ...filter,
+          isDelete: false,
+        })
+        .sort({ createdAt: -1 })
+        .populate([
+          { path: 'role', select: 'name' },
+          { path: 'teams', select: '_id name' },
+        ])
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+    ]);
+
+    return {
+      status: StatusResponse.SUCCESS,
+      message: 'Get Paging User Success',
+      total,
+      users,
+    };
   }
 }
