@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Logger, Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -9,8 +9,14 @@ import { JwtModule } from '@nestjs/jwt';
 import { AuthModule } from 'src/modules/auth/auth.module';
 import { TestModule } from 'src/modules/test/test.module';
 import { TeamModule } from 'src/team/team.module';
+import { ProductModule } from './modules/product/product.module';
+import { CategoryModule } from './modules/categories/categories.module';
+console.log(process.env.MONGO_URL);
 @Module({
   imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
     JwtModule.register({
       global: true,
       secret: process.env.JWT_SECRET_KEY,
@@ -20,20 +26,18 @@ import { TeamModule } from 'src/team/team.module';
     TestModule,
     RoleModule,
     AuthModule,
+    ProductModule,
     TeamModule,
+    CategoryModule,
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
-        uri: configService.get<string>('DB_URL'),
+        uri: configService.get<string>('MONGO_URL'),
         connectionFactory: (connection) => {
-          // connection.plugin(softDeletePlugin);
           return connection;
         },
       }),
       inject: [ConfigService],
-    }),
-    ConfigModule.forRoot({
-      isGlobal: true,
     }),
   ],
   controllers: [AppController],

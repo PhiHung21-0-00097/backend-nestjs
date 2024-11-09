@@ -75,6 +75,7 @@ export class UserController {
     udPassowrd: UpdatePasswordDto,
     @AuthUser() user: UserDocument,
   ) {
+    console.log('a');
     return this.userServices.updatePassword(id, udPassowrd, user);
   }
 
